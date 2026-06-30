@@ -19,6 +19,16 @@ export const WORLD = {
   HEIGHT: GRID.ROWS * GRID.TILE_SIZE,
 } as const;
 
+export const UNIT = {
+  /** Villager body size in pixels. */
+  SIZE: 32,
+  /** Green body of the Paddy gatherer. */
+  COLOR: 0x3fa34d,
+  /** Bright yellow selection border. */
+  SELECT_COLOR: 0xffe600,
+  SELECT_BORDER: 2,
+} as const;
+
 export const CAMERA = {
   /** Pan speed in pixels per second (scaled by delta in the update loop). */
   PAN_SPEED: 600,

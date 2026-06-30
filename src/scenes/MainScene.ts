@@ -1,6 +1,10 @@
 import Phaser from 'phaser';
+import { js as EasyStar } from 'easystarjs';
 import { CAMERA, GRID, WORLD } from '../config';
 import { Villager } from '../entities/Villager';
+
+/** Tile value representing walkable ground (grass/dirt). */
+const WALKABLE = 0;
 
 /** Screen-space drag distance (px) below which a gesture counts as a click. */
 const CLICK_THRESHOLD = 8;
@@ -30,6 +34,9 @@ export class MainScene extends Phaser.Scene {
   /** Screen-space anchor, used to tell a click apart from a drag. */
   private dragStartScreen = new Phaser.Math.Vector2();
 
+  /** A* pathfinder operating over the tile grid. */
+  private easystar = new EasyStar();
+
   constructor() {
     super({ key: 'MainScene' });
   }
@@ -38,8 +45,22 @@ export class MainScene extends Phaser.Scene {
     this.drawGrid();
     this.setupCamera();
     this.setupInput();
+    this.setupPathfinding();
     this.spawnVillagers();
     this.setupSelection();
+  }
+
+  /**
+   * Build a COLS x ROWS collision grid (all walkable for now) and hand it to
+   * EasyStar. The grid is indexed [row][col] to match EasyStar's [y][x].
+   */
+  private setupPathfinding(): void {
+    const grid: number[][] = [];
+    for (let row = 0; row < GRID.ROWS; row++) {
+      grid.push(new Array(GRID.COLS).fill(WALKABLE));
+    }
+    this.easystar.setGrid(grid);
+    this.easystar.setAcceptableTiles([WALKABLE]);
   }
 
   /**
@@ -136,6 +157,9 @@ export class MainScene extends Phaser.Scene {
 
   /** Create the selection rectangle and wire up the pointer-drag handlers. */
   private setupSelection(): void {
+    // Right-click is a move command, so suppress the browser context menu.
+    this.input.mouse?.disableContextMenu();
+
     this.selectionBox = this.add
       .rectangle(0, 0, 0, 0, 0x4a90e2, 0.2)
       .setOrigin(0, 0)
@@ -149,6 +173,12 @@ export class MainScene extends Phaser.Scene {
   }
 
   private onPointerDown(pointer: Phaser.Input.Pointer): void {
+    // Right-click issues a move order for the current selection.
+    if (pointer.rightButtonDown()) {
+      this.issueMoveCommand(pointer.worldX, pointer.worldY);
+      return;
+    }
+
     // Only the left button drives selection.
     if (!pointer.leftButtonDown()) return;
 
@@ -226,8 +256,69 @@ export class MainScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * Issue a move order to all selected villagers: drop a fading destination
+   * marker and ask EasyStar for a path from each unit to the target tile.
+   */
+  private issueMoveCommand(worldX: number, worldY: number): void {
+    // Clamp the destination to valid tile coordinates.
+    const targetX = Phaser.Math.Clamp(
+      Math.floor(worldX / GRID.TILE_SIZE),
+      0,
+      GRID.COLS - 1,
+    );
+    const targetY = Phaser.Math.Clamp(
+      Math.floor(worldY / GRID.TILE_SIZE),
+      0,
+      GRID.ROWS - 1,
+    );
+
+    this.spawnDestinationMarker(
+      targetX * GRID.TILE_SIZE + GRID.TILE_SIZE / 2,
+      targetY * GRID.TILE_SIZE + GRID.TILE_SIZE / 2,
+    );
+
+    for (const villager of this.villagers) {
+      if (!villager.selected) continue;
+      this.easystar.findPath(
+        villager.gridX,
+        villager.gridY,
+        targetX,
+        targetY,
+        (path) => {
+          // path is null when no route exists; ignore those.
+          if (path && path.length > 0) {
+            villager.moveAlongPath(path);
+          }
+        },
+      );
+    }
+    // Kick off path calculation; results arrive over the next update frames.
+    this.easystar.calculate();
+  }
+
+  /** Drop a small red circle at the target that fades out over 500ms. */
+  private spawnDestinationMarker(x: number, y: number): void {
+    const marker = this.add.circle(x, y, 8, 0xff3b30, 0.9).setDepth(15);
+    this.tweens.add({
+      targets: marker,
+      alpha: 0,
+      scale: 1.6,
+      duration: 500,
+      ease: 'Cubic.easeOut',
+      onComplete: () => marker.destroy(),
+    });
+  }
+
   update(_time: number, delta: number): void {
     const cam = this.cameras.main;
+
+    // Pump EasyStar so queued path requests resolve, then advance any units
+    // that have a path to follow.
+    this.easystar.calculate();
+    for (const villager of this.villagers) {
+      villager.update(delta);
+    }
 
     // Frame-rate independent pan distance. Divide by zoom so panning feels
     // consistent in screen-space regardless of how far we're zoomed in.

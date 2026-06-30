@@ -27,6 +27,8 @@ export const UNIT = {
   /** Bright yellow selection border. */
   SELECT_COLOR: 0xffe600,
   SELECT_BORDER: 2,
+  /** Movement speed in world pixels per second. */
+  MOVE_SPEED: 160,
 } as const;
 
 export const CAMERA = {

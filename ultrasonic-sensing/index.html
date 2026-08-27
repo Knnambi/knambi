@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ultrasonic Sensing: Wide-Beam Range vs LiDAR Point Cloud</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <h1>Ultrasonic Sensing <span>— wide-beam range vs. LiDAR point cloud</span></h1>
+  <p class="subtitle">
+    One shared 360-degree environment, sensed by a wide ultrasonic cone that outputs a single
+    distance number per ping, next to a dense LiDAR point cloud on the exact same scene — so the
+    real tradeoff (near-zero spatial detail, but robust to lighting/dust) is visible directly.
+    A pedagogical model, not a physically exact simulator — see <code>README.md</code>.
+  </p>
+</header>
+
+<section class="controls" id="controls">
+  <div class="control-group">
+    <div class="group-title">Environment</div>
+    <label>Object count — <span id="objectCountVal">8</span>
+      <input type="range" id="objectCount" min="0" max="16" value="8">
+    </label>
+    <label>Ring radius — <span id="radiusVal">3–9</span> m
+      <input type="range" id="minRadius" min="1" max="6" step="0.5" value="3">
+      <input type="range" id="maxRadius" min="3" max="14" step="0.5" value="9">
+    </label>
+    <label>Sensor mount height — <span id="sensorHeightVal">0.5</span> m
+      <input type="range" id="sensorHeight" min="0.2" max="1.2" step="0.05" value="0.5">
+    </label>
+    <label>Object surfaces
+      <select id="surfaceMix">
+        <option value="hard" selected>All hard/reflective</option>
+        <option value="soft">All soft/absorptive</option>
+        <option value="mixed">Mixed</option>
+      </select>
+    </label>
+    <label class="pc-checkbox"><input type="checkbox" id="movingEnabled" checked> Moving test object</label>
+    <label>Moving speed — <span id="movingSpeedVal">1.5</span> m/s
+      <input type="range" id="movingSpeed" min="0.3" max="8" step="0.1" value="1.5">
+    </label>
+  </div>
+
+  <div class="control-group">
+    <div class="group-title">Angle-of-incidence test panel</div>
+    <label>Panel distance — <span id="panelDistanceVal">2.0</span> m
+      <input type="range" id="panelDistance" min="0.1" max="6" step="0.05" value="2.0">
+    </label>
+    <label>Panel tilt — <span id="panelYawVal">0</span>°
+      <input type="range" id="panelYaw" min="0" max="89" step="1" value="0">
+      <span class="hint">0° = facing the sensor square-on; past the incidence limit below, the echo misses</span>
+    </label>
+    <label>Panel surface
+      <select id="panelSurface">
+        <option value="hard" selected>Hard</option>
+        <option value="soft">Soft/absorptive</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="control-group">
+    <div class="group-title">Ultrasonic sensor</div>
+    <label>Beam angle — <span id="beamAngleVal">30</span>°
+      <input type="range" id="beamAngle" min="15" max="45" step="1" value="30">
+    </label>
+    <label>Incidence limit — <span id="incidenceLimitVal">40</span>°
+      <input type="range" id="incidenceLimit" min="15" max="60" step="1" value="40">
+    </label>
+    <label>Blind zone (min range) — <span id="minSenseVal">0.25</span> m
+      <input type="range" id="minSense" min="0.05" max="0.6" step="0.01" value="0.25">
+    </label>
+    <label>Max range — <span id="maxRangeVal">4.0</span> m
+      <input type="range" id="maxRange" min="1" max="8" step="0.1" value="4.0">
+    </label>
+    <label>Ping rate — <span id="pingRateVal">15</span> Hz
+      <input type="range" id="pingRate" min="5" max="25" step="1" value="15">
+    </label>
+    <label>Air temperature — <span id="tempVal">20</span>°C
+      <input type="range" id="temp" min="-20" max="40" step="1" value="20">
+      <span class="hint">sets speed of sound: <span id="speedOfSoundVal">343</span> m/s</span>
+    </label>
+  </div>
+
+  <div class="control-group">
+    <div class="group-title">Sensor layout</div>
+    <label>Mode
+      <select id="arrayMode">
+        <option value="single" selected>Single sensor</option>
+        <option value="array">Bumper array</option>
+      </select>
+    </label>
+    <label>Array sensor count — <span id="sensorCountVal">5</span>
+      <input type="range" id="sensorCount" min="4" max="6" value="5">
+    </label>
+    <label class="pc-checkbox"><input type="checkbox" id="crossTalk"> Cross-talk between sensors</label>
+  </div>
+
+  <div class="control-group actions">
+    <div class="group-title">Playback</div>
+    <div class="btn-row">
+      <button id="playBtn" class="primary">Play ▸</button>
+      <button id="resetTimeBtn">Reset time ↺</button>
+    </div>
+    <label>Playback speed — <span id="speedVal">0.3</span>×
+      <input type="range" id="speed" min="0.02" max="1" step="0.02" value="0.3">
+    </label>
+    <label>Scene time — <span id="simTimeVal">0.00</span> s
+      <input type="range" id="simTime" min="0" max="20" step="0.01" value="0">
+    </label>
+  </div>
+</section>
+
+<section class="readout-panel">
+  <div class="col-title">Distance readout <span class="tag">what the sensor(s) actually output — one scalar each, not a map</span></div>
+  <div id="readoutRow" class="readout-row"></div>
+</section>
+
+<section class="pc-grid">
+  <div class="pc-cell">
+    <div class="pc-cell-title">Ultrasonic <span class="tag">wide cone, real scene geometry shown for reference</span></div>
+    <canvas id="ultraCanvas"></canvas>
+    <dl class="col-stats" id="ultraStats"></dl>
+  </div>
+  <div class="pc-cell">
+    <div class="pc-cell-title">LiDAR <span class="tag">same scene, for contrast — dense point cloud vs. one number</span></div>
+    <canvas id="lidarCanvas"></canvas>
+    <dl class="col-stats" id="lidarStats"></dl>
+  </div>
+</section>
+
+<footer>
+  <p>Everything here runs client-side, from static files — nothing is uploaded anywhere. See <code>README.md</code> for what's simulated vs. simplified.</p>
+</footer>
+
+<script src="js/vendor/three.min.js"></script>
+<script src="js/vendor/OrbitControls.js"></script>
+<script src="js/vec3.js"></script>
+<script src="js/rng.js"></script>
+<script src="js/scene.js"></script>
+<script src="js/ultrasonic.js"></script>
+<script src="js/mechanical.js"></script>
+<script src="js/view3d.js"></script>
+<script src="js/lidarview.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

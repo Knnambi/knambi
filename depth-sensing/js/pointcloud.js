@@ -161,13 +161,31 @@
     for (const p of points) body += p.x.toFixed(5) + " " + p.y.toFixed(5) + " " + p.z.toFixed(5) + " " + p.c.toFixed(3) + "\n";
     return body;
   }
-  function downloadText(text, filename) {
+  // Opening this app as a plain local file, `window.claude` doesn't
+  // exist and a normal same-origin <a download> click works fine. Inside
+  // a sandboxed Artifact preview, that click is silently inert — the
+  // frame has to hand the file to the host via the `downloads`
+  // capability instead, which only allows a fixed extension allowlist
+  // that doesn't include .ply/.xyz, so those get renamed to .txt for
+  // that path only (content is unchanged either way).
+  function downloadViaAnchor(text, filename) {
     const blob = new Blob([text], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url; a.download = filename;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  }
+  function downloadText(text, filename) {
+    if (window.claude && typeof window.claude.use === "function") {
+      window.claude.use("downloads").then((downloads) => {
+        if (!downloads) { downloadViaAnchor(text, filename); return; }
+        const safeName = filename.replace(/\.(ply|xyz)$/i, ".txt");
+        downloads.save({ filename: safeName, data: text }).catch(() => {});
+      }).catch(() => downloadViaAnchor(text, filename));
+    } else {
+      downloadViaAnchor(text, filename);
+    }
   }
 
   window.Depth = window.Depth || {};

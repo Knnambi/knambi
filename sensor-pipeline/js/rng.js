@@ -2,7 +2,7 @@
  * rng.js — seeded random numbers + the two noise distributions the whole
  * simulation leans on: Gaussian (read noise, FPN) and Poisson (shot noise).
  *
- * Everything here is namespaced under Sensor.RNG so plain <script> tags
+ * Everything here is namespaced under Sensor.RNG so plain script tags
  * (no bundler, no ES modules) can be loaded in order without collisions.
  * Seeded PRNG (not Math.random) so "Reseed sensor" can regenerate a fixed
  * fixed-pattern-noise map on demand, and so the same seed reproduces the

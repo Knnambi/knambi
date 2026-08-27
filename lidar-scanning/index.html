@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiDAR Scanning: Mechanical vs Solid-State vs Hybrid vs 2D</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <h1>LiDAR Scanning <span>— Mechanical vs Solid-State vs Hybrid vs 2D</span></h1>
+  <p class="subtitle">
+    One 360-degree environment, ray-cast through four scanning architectures at once, so their real
+    coverage/density/motion-artifact tradeoffs show up as literal scan patterns rather than a spec
+    sheet. A pedagogical model, not a physically exact simulator — see <code>README.md</code>.
+  </p>
+</header>
+
+<section class="controls" id="controls">
+  <div class="control-group">
+    <div class="group-title">Environment</div>
+    <label>Object count — <span id="objectCountVal">10</span>
+      <input type="range" id="objectCount" min="4" max="20" value="10">
+    </label>
+    <label>Ring radius — <span id="radiusVal">3–10</span> m
+      <input type="range" id="minRadius" min="1" max="8" step="0.5" value="3">
+      <input type="range" id="maxRadius" min="4" max="16" step="0.5" value="10">
+    </label>
+    <label>Sensor height — <span id="sensorHeightVal">1.5</span> m
+      <input type="range" id="sensorHeight" min="0.3" max="3" step="0.1" value="1.5">
+    </label>
+    <label class="pc-checkbox"><input type="checkbox" id="movingEnabled" checked> Moving test object</label>
+    <label>Moving speed — <span id="movingSpeedVal">3.0</span> m/s
+      <input type="range" id="movingSpeed" min="0.5" max="15" step="0.5" value="3">
+    </label>
+  </div>
+
+  <div class="control-group">
+    <div class="group-title">Mechanical LiDAR</div>
+    <label>Channels
+      <select id="mechChannels">
+        <option value="16" selected>16-line</option>
+        <option value="32">32-line</option>
+        <option value="64">64-line</option>
+      </select>
+    </label>
+    <label>Vertical FOV — <span id="mechFovVal">30</span>°
+      <input type="range" id="mechFov" min="10" max="50" step="1" value="30">
+    </label>
+    <label>Spin rate — <span id="mechRpmVal">600</span> RPM
+      <input type="range" id="mechRpm" min="120" max="1200" step="10" value="600">
+    </label>
+    <label>Angular resolution
+      <select id="mechRes">
+        <option value="180">Coarse (180/rev)</option>
+        <option value="360" selected>Medium (360/rev)</option>
+        <option value="900">Fine (900/rev)</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="control-group">
+    <div class="group-title">Solid-State LiDAR</div>
+    <label>Horizontal FOV — <span id="ssFovHVal">90</span>°
+      <input type="range" id="ssFovH" min="60" max="120" step="5" value="90">
+    </label>
+    <label>FOV direction (azimuth) — <span id="ssAzimuthVal">0</span>°
+      <input type="range" id="ssAzimuth" min="0" max="360" step="5" value="0">
+    </label>
+    <label>Raster resolution
+      <select id="ssRes">
+        <option value="24,8">Coarse</option>
+        <option value="40,12" selected>Medium</option>
+        <option value="64,20">Fine</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="control-group">
+    <div class="group-title">Hybrid Solid-State</div>
+    <label>Mechanical arc — <span id="hybArcVal">180</span>°
+      <input type="range" id="hybArc" min="120" max="270" step="10" value="180">
+    </label>
+    <label>Oscillation rate — <span id="hybOscVal">1.0</span> Hz
+      <input type="range" id="hybOsc" min="0.3" max="3" step="0.1" value="1.0">
+    </label>
+    <label>Cluster density
+      <select id="hybRes">
+        <option value="30,3,3">Coarse</option>
+        <option value="60,4,4" selected>Medium</option>
+        <option value="100,6,6">Fine</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="control-group">
+    <div class="group-title">2D LiDAR</div>
+    <label>Spin rate — <span id="p2dRpmVal">300</span> RPM
+      <input type="range" id="p2dRpm" min="120" max="900" step="10" value="300">
+    </label>
+    <label>Angular resolution
+      <select id="p2dRes">
+        <option value="360">Coarse (360/rev)</option>
+        <option value="720" selected>Medium (720/rev)</option>
+        <option value="1440">Fine (1440/rev)</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="control-group actions">
+    <div class="group-title">Playback</div>
+    <label>Max range (shared) — <span id="maxRangeVal">30</span> m
+      <input type="range" id="maxRange" min="12" max="50" step="1" value="30">
+    </label>
+    <label>Color by
+      <select id="colorMode">
+        <option value="distance" selected>Distance</option>
+        <option value="channel">Channel</option>
+      </select>
+    </label>
+    <div class="btn-row">
+      <button id="playBtn" class="primary">Play ▸</button>
+      <button id="resetTimeBtn">Reset time ↺</button>
+    </div>
+    <label>Playback speed — <span id="speedVal">0.1</span>×
+      <input type="range" id="speed" min="0.01" max="1" step="0.01" value="0.1">
+      <span class="hint">(slowed down — real sweeps take well under a second)</span>
+    </label>
+    <label>Scene time — <span id="simTimeVal">0.00</span> s
+      <input type="range" id="simTime" min="0" max="20" step="0.01" value="0">
+    </label>
+  </div>
+</section>
+
+<section class="pc-grid">
+  <div class="pc-cell">
+    <div class="pc-cell-title">Mechanical <span class="tag">spinning multi-channel, 360°</span></div>
+    <canvas id="mechCanvas"></canvas>
+    <dl class="col-stats" id="mechStats"></dl>
+  </div>
+  <div class="pc-cell">
+    <div class="pc-cell-title">Solid-State <span class="tag">fixed array, no moving parts</span></div>
+    <canvas id="ssCanvas"></canvas>
+    <dl class="col-stats" id="ssStats"></dl>
+  </div>
+  <div class="pc-cell">
+    <div class="pc-cell-title">Hybrid Solid-State <span class="tag">oscillating mirror + micro-raster</span></div>
+    <canvas id="hybCanvas"></canvas>
+    <dl class="col-stats" id="hybStats"></dl>
+  </div>
+  <div class="pc-cell">
+    <div class="pc-cell-title">2D LiDAR <span class="tag">single plane, 360°</span></div>
+    <canvas id="p2dCanvas"></canvas>
+    <dl class="col-stats" id="p2dStats"></dl>
+  </div>
+</section>
+
+<section class="compare">
+  <div class="col-title">Comparison</div>
+  <table id="compareTable">
+    <thead><tr><th></th><th>Mechanical</th><th>Solid-State</th><th>Hybrid</th><th>2D</th></tr></thead>
+    <tbody></tbody>
+  </table>
+</section>
+
+<footer>
+  <p>Everything here runs client-side, from static files — nothing is uploaded anywhere. See <code>README.md</code> for what's simulated vs. simplified.</p>
+</footer>
+
+<script src="js/vendor/three.min.js"></script>
+<script src="js/vendor/OrbitControls.js"></script>
+<script src="js/vec3.js"></script>
+<script src="js/rng.js"></script>
+<script src="js/scene.js"></script>
+<script src="js/mechanical.js"></script>
+<script src="js/solidstate.js"></script>
+<script src="js/hybrid.js"></script>
+<script src="js/planar2d.js"></script>
+<script src="js/lidarview.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

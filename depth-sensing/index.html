@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Depth Sensing: ToF vs Structured Light vs Stereo</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <h1>Depth Sensing <span>— Time-of-Flight vs Structured Light vs Stereo</span></h1>
+  <p class="subtitle">
+    One synthetic 3D scene, ray-cast through three different depth-sensing architectures at once, so
+    their real tradeoffs — range, ambient-light sensitivity, and surface dependence — show up as
+    something you can watch happen rather than read about. A pedagogical model, not a physically exact
+    simulator — see <code>README.md</code>.
+  </p>
+</header>
+
+<section class="controls" id="controls">
+  <div class="control-group">
+    <div class="group-title">Scene</div>
+    <label>Sensor resolution
+      <select id="resolution">
+        <option value="16">16 × 16</option>
+        <option value="32" selected>32 × 32</option>
+        <option value="48">48 × 48</option>
+        <option value="64">64 × 64</option>
+      </select>
+    </label>
+    <label>Layout
+      <select id="layout">
+        <option value="row" selected>Row of objects</option>
+        <option value="cluster">Clustered objects</option>
+        <option value="concave-corner">Concave corner (multipath demo)</option>
+      </select>
+    </label>
+    <label>Object count — <span id="objectCountVal">3</span>
+      <input type="range" id="objectCount" min="1" max="5" value="3">
+    </label>
+    <label>Object distance — <span id="distanceVal">4.0</span> m
+      <input type="range" id="distance" min="2" max="9" step="0.1" value="4">
+    </label>
+  </div>
+
+  <div class="control-group">
+    <div class="group-title">Surface &amp; light</div>
+    <label>Surface type
+      <select id="surfaceType">
+        <option value="matte" selected>Matte</option>
+        <option value="reflective">Reflective</option>
+        <option value="dark">Dark / absorptive</option>
+      </select>
+    </label>
+    <label>Ambient light — <span id="ambientVal">20</span>%
+      <input type="range" id="ambient" min="0" max="100" value="20">
+    </label>
+    <label>Texture density — <span id="textureVal">100</span>%
+      <input type="range" id="texture" min="0" max="100" value="100">
+      <span class="hint">(affects stereo only — the other two bring their own light)</span>
+    </label>
+  </div>
+
+  <div class="control-group">
+    <div class="group-title">Sensor geometry</div>
+    <label>Baseline (structured light &amp; stereo) — <span id="baselineVal">1.0</span> m
+      <input type="range" id="baseline" min="0.2" max="2.0" step="0.05" value="1.0">
+    </label>
+    <label>ToF timing jitter — <span id="jitterVal">1.0</span>×
+      <input type="range" id="jitter" min="0.3" max="3" step="0.1" value="1.0">
+    </label>
+  </div>
+
+  <div class="control-group actions">
+    <div class="group-title">Run</div>
+    <div class="btn-row">
+      <button id="captureBtn">New capture</button>
+      <button id="resetBtn">Reset acquisition ↺</button>
+    </div>
+    <div class="btn-row">
+      <button id="stepBtn">Step ▸</button>
+      <button id="runBtn" class="primary">Run ▸▸</button>
+    </div>
+    <label>Animation speed — <span id="speedVal">2</span>%/frame
+      <input type="range" id="speed" min="1" max="10" value="2">
+    </label>
+    <div class="progress-label">Acquisition: <b id="progressPct">0%</b></div>
+  </div>
+</section>
+
+<section class="source-preview">
+  <div class="source-thumb">
+    <div class="col-title">Reference view <span class="tag">what a plain camera sees</span></div>
+    <canvas id="sourceCanvas"></canvas>
+  </div>
+  <div class="legend-panel">
+    <div class="legend-row"><span class="swatch near"></span>near</div>
+    <div class="legend-row"><span class="swatch far"></span>far</div>
+    <div class="legend-row"><span class="swatch hole"></span>no confident reading</div>
+  </div>
+</section>
+
+<section class="stage">
+  <div class="pipeline-col">
+    <div class="col-title">Time-of-Flight <span class="tag">IR pulse, co-located emitter</span></div>
+    <canvas id="tofCanvas"></canvas>
+    <dl class="col-stats" id="tofStats"></dl>
+  </div>
+
+  <div class="pipeline-col">
+    <div class="col-title">Structured Light <span class="tag">projected dot grid, triangulation</span></div>
+    <canvas id="slPatternCanvas"></canvas>
+    <canvas id="slDepthCanvas"></canvas>
+    <dl class="col-stats" id="slStats"></dl>
+  </div>
+
+  <div class="pipeline-col">
+    <div class="col-title">Stereo <span class="tag">two cameras, block matching</span></div>
+    <canvas id="stereoViewsCanvas"></canvas>
+    <canvas id="stereoDepthCanvas"></canvas>
+    <dl class="col-stats" id="stereoStats"></dl>
+  </div>
+</section>
+
+<section class="compare">
+  <div class="col-title">Comparison</div>
+  <table id="compareTable">
+    <thead><tr><th></th><th>ToF</th><th>Structured Light</th><th>Stereo</th></tr></thead>
+    <tbody></tbody>
+  </table>
+
+  <details>
+    <summary>Reference: typical real-world characteristics</summary>
+    <table id="referenceTable">
+      <thead><tr><th></th><th>ToF</th><th>Structured Light</th><th>Stereo</th></tr></thead>
+      <tbody>
+        <tr><td>Typical range</td><td>0.5 – 10 m+</td><td>0.2 – 2 m</td><td>0.3 m – 50 m+</td></tr>
+        <tr><td>Ambient light (sunlight)</td><td>Robust</td><td>Fails</td><td>Needs light — fine outdoors</td></tr>
+        <tr><td>Dark surfaces</td><td>Degrades (weak return)</td><td>Degrades (weak return)</td><td>Degrades (needs contrast)</td></tr>
+        <tr><td>Textureless surfaces</td><td>Unaffected</td><td>Unaffected</td><td>Fails (no match)</td></tr>
+        <tr><td>Relative power draw</td><td>Medium</td><td>Medium</td><td>Low (no emitter)</td></tr>
+        <tr><td>Relative compute cost</td><td>Low</td><td>Medium</td><td>High (search per pixel)</td></tr>
+        <tr><td>Classic use case</td><td>Automotive LiDAR-adjacent, robotics</td><td>Face ID, close-range hand tracking</td><td>Outdoor / long-range robotics</td></tr>
+      </tbody>
+    </table>
+  </details>
+</section>
+
+<footer>
+  <p>Everything here runs client-side, from static files — nothing is uploaded anywhere. See <code>README.md</code> for what's simulated vs. simplified.</p>
+</footer>
+
+<script src="js/vec3.js"></script>
+<script src="js/rng.js"></script>
+<script src="js/scene.js"></script>
+<script src="js/camera.js"></script>
+<script src="js/render.js"></script>
+<script src="js/tof.js"></script>
+<script src="js/structured-light.js"></script>
+<script src="js/stereo.js"></script>
+<script src="js/depthview.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

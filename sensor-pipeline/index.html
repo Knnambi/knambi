@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CCD vs CMOS — Image Sensor Pipeline Simulator</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <h1>CCD vs CMOS <span>— Image Sensor Pipeline Simulator</span></h1>
+  <p class="subtitle">
+    Photon capture &rarr; charge accumulation &rarr; readout &rarr; noise &amp; ADC, run side by side
+    for both architectures from the same source scene. A pedagogical model, not a physically exact
+    sensor simulator — see <code>README.md</code>.
+  </p>
+</header>
+
+<section class="controls" id="controls">
+
+  <div class="control-group">
+    <div class="group-title">Scene</div>
+    <label>Resolution
+      <select id="resolution">
+        <option value="16">16 × 16</option>
+        <option value="24">24 × 24</option>
+        <option value="32" selected>32 × 32</option>
+        <option value="48">48 × 48</option>
+        <option value="64">64 × 64</option>
+      </select>
+    </label>
+    <label>Test scene
+      <select id="sceneSelect">
+        <option value="movingbar" selected>Moving bar (motion demo)</option>
+        <option value="gradient">Gradient</option>
+        <option value="checkerboard">Checkerboard</option>
+        <option value="radial">Radial (bloom demo)</option>
+        <option value="image">Uploaded image</option>
+      </select>
+    </label>
+    <label class="file-label">
+      Upload image <input type="file" id="imageUpload" accept="image/*">
+    </label>
+    <label class="checkbox">
+      <input type="checkbox" id="motionToggle" checked> Motion enabled (moving bar sweeps during exposure)
+    </label>
+  </div>
+
+  <div class="control-group">
+    <div class="group-title">Exposure &amp; environment</div>
+    <label>Exposure time — <span id="exposureVal">40</span> ms
+      <input type="range" id="exposure" min="1" max="200" value="40">
+    </label>
+    <label>Light intensity — <span id="intensityVal">70</span>%
+      <input type="range" id="intensity" min="1" max="100" value="70">
+    </label>
+    <label>Temperature — <span id="tempVal">25</span> °C
+      <input type="range" id="temperature" min="-10" max="60" value="25">
+    </label>
+  </div>
+
+  <div class="control-group">
+    <div class="group-title">Readout electronics</div>
+    <label>Pixel clock — <span id="clockVal">10</span> MHz
+      <input type="range" id="pixelClock" min="1" max="50" value="10">
+    </label>
+    <label>ADC bit depth
+      <select id="bitDepth">
+        <option value="8">8-bit (256 levels)</option>
+        <option value="10" selected>10-bit (1024 levels)</option>
+        <option value="12">12-bit (4096 levels)</option>
+      </select>
+    </label>
+    <label class="checkbox">
+      <input type="checkbox" id="globalShutter"> CMOS: global shutter (vs. rolling)
+    </label>
+  </div>
+
+  <div class="control-group actions">
+    <div class="group-title">Run</div>
+    <div class="btn-row">
+      <button id="captureBtn" title="Re-run photon capture + charge accumulation with current settings">New exposure</button>
+      <button id="reseedBtn" title="Regenerate the fixed-pattern noise map, as if swapping in a different physical chip">Reseed sensor</button>
+    </div>
+    <div class="btn-row">
+      <button id="stepBtn">Step ▸</button>
+      <button id="runBtn" class="primary">Run ▸▸</button>
+      <button id="resetReadoutBtn">Reset readout ↺</button>
+    </div>
+    <label>Animation speed — <span id="animSpeedVal">6</span> steps/frame
+      <input type="range" id="animSpeed" min="1" max="40" value="6">
+    </label>
+  </div>
+
+</section>
+
+<section class="source-preview">
+  <div class="source-thumb">
+    <div class="col-title">Source scene <span class="tag">ground truth, same for both</span></div>
+    <canvas id="sourceCanvas"></canvas>
+  </div>
+  <div class="readout-progress" id="progressPanel">
+    <div><span class="dot ccd-dot"></span>CCD readout: <b id="ccdProgress">0 / 0</b></div>
+    <div><span class="dot cmos-dot"></span>CMOS readout: <b id="cmosProgress">0 / 0</b></div>
+  </div>
+</section>
+
+<section class="stage">
+  <div class="pipeline-col">
+    <div class="col-title">CCD <span class="tag">one output amplifier, serial shift</span></div>
+    <canvas id="ccdCanvas"></canvas>
+    <dl class="col-stats" id="ccdStats"></dl>
+  </div>
+  <div class="pipeline-col">
+    <div class="col-title">CMOS <span class="tag">per-pixel amps, row-parallel readout</span></div>
+    <canvas id="cmosCanvas"></canvas>
+    <dl class="col-stats" id="cmosStats"></dl>
+  </div>
+</section>
+
+<section class="compare">
+  <div class="col-title">Comparison</div>
+  <table id="compareTable">
+    <thead>
+      <tr><th></th><th>CCD</th><th>CMOS</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</section>
+
+<footer>
+  <p>Everything here runs client-side, from static files — nothing is uploaded anywhere. See <code>README.md</code> for what's simulated vs. simplified.</p>
+</footer>
+
+<script src="js/rng.js"></script>
+<script src="js/scene.js"></script>
+<script src="js/capture.js"></script>
+<script src="js/blooming.js"></script>
+<script src="js/fpn.js"></script>
+<script src="js/adc.js"></script>
+<script src="js/timing.js"></script>
+<script src="js/readout-ccd.js"></script>
+<script src="js/readout-cmos.js"></script>
+<script src="js/stats.js"></script>
+<script src="js/render.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

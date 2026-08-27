@@ -49,6 +49,14 @@
     const measuredDepth = new Float32Array(n);
     const valid = new Uint8Array(n);
     const multipath = new Uint8Array(n);
+    // Per-pixel confidence (0..1), for the point cloud: a direct readout
+    // of the same returned-signal strength that already drives this
+    // pixel's noise and dropout above, not a separate invented number.
+    const confidence = new Float32Array(n);
+    // Signal strength at which we call the return "fully confident" —
+    // several times the dropout threshold, so confidence falls off well
+    // before a pixel is actually at risk of dropping out.
+    const CONFIDENT_SIGNAL = DROPOUT_SIGNAL_THRESHOLD * 3;
 
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
@@ -90,9 +98,10 @@
 
         const dropoutChance = Math.max(0, 1 - signalTotal / DROPOUT_SIGNAL_THRESHOLD) * 0.6;
         valid[idx] = opts.rng() < dropoutChance ? 0 : 1;
+        confidence[idx] = valid[idx] ? Math.max(0, Math.min(1, signalTotal / CONFIDENT_SIGNAL)) : 0;
       }
     }
-    return { w: w, h: h, trueDepth: trueDepth, measuredDepth: measuredDepth, valid: valid, multipath: multipath };
+    return { w: w, h: h, trueDepth: trueDepth, measuredDepth: measuredDepth, valid: valid, multipath: multipath, confidence: confidence };
   }
 
   window.Depth = window.Depth || {};

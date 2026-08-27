@@ -147,10 +147,67 @@
   </details>
 </section>
 
+<section class="pointcloud">
+  <div class="col-title">3D Point Clouds <span class="tag">same depth maps, back-projected into space — drag to orbit, scroll to zoom</span></div>
+
+  <div class="pc-controls">
+    <label>Color by
+      <select id="pcColorMode">
+        <option value="depth" selected>Depth</option>
+        <option value="confidence">Confidence</option>
+      </select>
+    </label>
+    <label class="pc-checkbox"><input type="checkbox" id="pcGroundTruth" checked> Show ground truth (gray reference)</label>
+    <span class="hint pc-hint">Dim / faded points = low confidence in that sensor's own noise model.</span>
+  </div>
+
+  <div class="pc-grid">
+    <div class="pc-cell">
+      <div class="pc-cell-title">Time-of-Flight</div>
+      <canvas id="pcTofCanvas"></canvas>
+      <dl class="col-stats" id="pcTofStats"></dl>
+      <div class="btn-row">
+        <button id="pcTofExportPly">Export .ply</button>
+        <button id="pcTofExportXyz">Export .xyz</button>
+      </div>
+    </div>
+    <div class="pc-cell">
+      <div class="pc-cell-title">Structured Light</div>
+      <canvas id="pcSlCanvas"></canvas>
+      <dl class="col-stats" id="pcSlStats"></dl>
+      <div class="btn-row">
+        <button id="pcSlExportPly">Export .ply</button>
+        <button id="pcSlExportXyz">Export .xyz</button>
+      </div>
+    </div>
+    <div class="pc-cell">
+      <div class="pc-cell-title">Stereo</div>
+      <canvas id="pcStereoCanvas"></canvas>
+      <dl class="col-stats" id="pcStereoStats"></dl>
+      <div class="btn-row">
+        <button id="pcStereoExportPly">Export .ply</button>
+        <button id="pcStereoExportXyz">Export .xyz</button>
+      </div>
+    </div>
+    <div class="pc-cell">
+      <div class="pc-cell-title">Overlay <span class="tag">all three + ground truth</span></div>
+      <canvas id="pcOverlayCanvas"></canvas>
+      <div class="legend-panel pc-overlay-legend">
+        <div class="legend-row"><span class="swatch" style="background:#e0a23e"></span>ToF</div>
+        <div class="legend-row"><span class="swatch" style="background:#6fa3ec"></span>Structured Light</div>
+        <div class="legend-row"><span class="swatch" style="background:#55c17b"></span>Stereo</div>
+        <div class="legend-row"><span class="swatch" style="background:#8b97a7"></span>Ground truth</div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <footer>
   <p>Everything here runs client-side, from static files — nothing is uploaded anywhere. See <code>README.md</code> for what's simulated vs. simplified.</p>
 </footer>
 
+<script src="js/vendor/three.min.js"></script>
+<script src="js/vendor/OrbitControls.js"></script>
 <script src="js/vec3.js"></script>
 <script src="js/rng.js"></script>
 <script src="js/scene.js"></script>
@@ -160,6 +217,8 @@
 <script src="js/structured-light.js"></script>
 <script src="js/stereo.js"></script>
 <script src="js/depthview.js"></script>
+<script src="js/pointcloud.js"></script>
+<script src="js/pcview.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

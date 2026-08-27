@@ -92,6 +92,9 @@
     const disparity = new Float32Array(w * h).fill(NaN);
     const depth = new Float32Array(w * h).fill(NaN);
     const valid = new Uint8Array(w * h);
+    // Per-pixel confidence (0..1), for the point cloud: the same cost
+    // contrast used to accept/reject the match, not a separate number.
+    const confidence = new Float32Array(w * h);
 
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
@@ -139,10 +142,11 @@
           disparity[y * w + x] = subD;
           depth[y * w + x] = (opts.baseline * focalPx) / subD;
           valid[y * w + x] = 1;
+          confidence[y * w + x] = Math.max(0, Math.min(1, contrast));
         }
       }
     }
-    return { w: w, h: h, leftImage: left, rightImage: right, disparity: disparity, depth: depth, valid: valid };
+    return { w: w, h: h, leftImage: left, rightImage: right, disparity: disparity, depth: depth, valid: valid, confidence: confidence };
   }
 
   window.Depth = window.Depth || {};

@@ -42,6 +42,25 @@
   const tofStatsEl = el("tofStats"), slStatsEl = el("slStats"), stereoStatsEl = el("stereoStats");
   const compareBody = document.querySelector("#compareTable tbody");
 
+  // ---------- 3D point cloud viewports ----------
+  const PC = D.PointCloud, PCV = D.PCView;
+  const pcColorModeEl = el("pcColorMode"), pcGroundTruthEl = el("pcGroundTruth");
+  const pcStatsEl = { tof: el("pcTofStats"), sl: el("pcSlStats"), stereo: el("pcStereoStats") };
+  // Muted gray, distinct from every sensor's own accent color, used for
+  // the ground-truth reference layer everywhere it appears.
+  const GT_TINT = [0.545, 0.592, 0.655];
+  const TOF_TINT = [0.878, 0.635, 0.243], SL_TINT = [0.435, 0.639, 0.925], STEREO_TINT = [0.333, 0.757, 0.482];
+  const viewports = {
+    tof: PCV.createViewport(el("pcTofCanvas")),
+    sl: PCV.createViewport(el("pcSlCanvas")),
+    stereo: PCV.createViewport(el("pcStereoCanvas")),
+    overlay: PCV.createViewport(el("pcOverlayCanvas")),
+  };
+  (function renderPointCloudsLoop() {
+    viewports.tof.render(); viewports.sl.render(); viewports.stereo.render(); viewports.overlay.render();
+    requestAnimationFrame(renderPointCloudsLoop);
+  })();
+
   const rng = D.RNG.makeRng(0xdeadbeef);
 
   let res = 32, gridSize = 16, cellPx = 6, cellPxSL = 6;
@@ -135,6 +154,75 @@
     progress = 0;
     stopRun();
     render();
+    buildAndShowPointClouds();
+  }
+
+  // ---------- 3D point clouds ----------
+  // Regenerated from the just-computed sensor results (no re-raycasting)
+  // whenever a scene control changes, AND on their own whenever just the
+  // color-by mode or ground-truth toggle changes — see the listeners
+  // near the bottom of this file.
+  function buildAndShowPointClouds() {
+    if (!frame) return;
+    const { prims, mainCam, projector, leftCam, tof, sl, stereo } = frame;
+
+    const groundTruth = PC.buildGroundTruthCloud(mainCam, prims);
+    const tofCloud = PC.buildToFCloud(mainCam, tof);
+    const slCloud = PC.buildStructuredLightCloud(projector, sl);
+    const stereoCloud = PC.buildStereoCloud(leftCam, stereo);
+    frame.pointClouds = { groundTruth, tofCloud, slCloud, stereoCloud };
+
+    const colorMode = pcColorModeEl.value;
+    const gt = pcGroundTruthEl.checked ? groundTruth : null;
+    const gtOpts = { tint: GT_TINT, size: 0.035, opacity: 0.45 };
+
+    viewports.tof.setLayer("main", tofCloud.points, { colorMode, tint: TOF_TINT, size: 0.06, frameOn: "main" });
+    viewports.tof.setLayer("gt", gt, gtOpts);
+
+    viewports.sl.setLayer("main", slCloud.points, { colorMode, tint: SL_TINT, size: 0.07, frameOn: "main" });
+    viewports.sl.setLayer("gt", gt, gtOpts);
+
+    viewports.stereo.setLayer("main", stereoCloud.points, { colorMode, tint: STEREO_TINT, size: 0.06, frameOn: "main" });
+    viewports.stereo.setLayer("gt", gt, gtOpts);
+
+    // The overlay always tints each sensor by identity (not depth/
+    // confidence) — the point here is seeing WHERE the three clouds
+    // agree or diverge, which a shared color ramp would wash out.
+    viewports.overlay.setLayer("tof", tofCloud.points, { tint: TOF_TINT, size: 0.05, opacity: 0.85, frameOn: "tof" });
+    viewports.overlay.setLayer("sl", slCloud.points, { tint: SL_TINT, size: 0.05, opacity: 0.85 });
+    viewports.overlay.setLayer("stereo", stereoCloud.points, { tint: STEREO_TINT, size: 0.05, opacity: 0.85 });
+    viewports.overlay.setLayer("gt", gt, { tint: GT_TINT, size: 0.03, opacity: 0.35 });
+
+    updatePointCloudStats();
+  }
+
+  function updatePointCloudStats() {
+    const { mainCam, leftCam, tof, sl, stereo, stereoGroundTruth, pointClouds } = frame;
+    const tofAcc = PC.tofAccuracy(mainCam, tof);
+    const slAcc = PC.slAccuracy(sl);
+    const stereoAcc = PC.stereoAccuracy(leftCam, stereo, stereoGroundTruth);
+
+    const tofDropout = 1 - pointClouds.tofCloud.points.length / pointClouds.tofCloud.attempted;
+    const slDropout = 1 - pointClouds.slCloud.points.length / pointClouds.slCloud.attempted;
+    const stereoDropout = 1 - pointClouds.stereoCloud.points.length / pointClouds.stereoCloud.attempted;
+
+    pcStatsEl.tof.innerHTML =
+      statRow("Points", pointClouds.tofCloud.points.length) +
+      statRow("Dropout rate", fmtPct(tofDropout), tofDropout > 0.4 ? "warn" : "ok") +
+      statRow("Mean err to truth", fmtM(tofAcc.mean)) +
+      statRow("RMS err to truth", fmtM(tofAcc.rms));
+
+    pcStatsEl.sl.innerHTML =
+      statRow("Points", pointClouds.slCloud.points.length) +
+      statRow("Dropout rate", fmtPct(slDropout), slDropout > 0.6 ? "warn" : "ok") +
+      statRow("Mean err to truth", fmtM(slAcc.mean)) +
+      statRow("RMS err to truth", fmtM(slAcc.rms));
+
+    pcStatsEl.stereo.innerHTML =
+      statRow("Points", pointClouds.stereoCloud.points.length) +
+      statRow("Dropout rate", fmtPct(stereoDropout), stereoDropout > 0.7 ? "warn" : "ok") +
+      statRow("Mean err to truth", fmtM(stereoAcc.mean)) +
+      statRow("RMS err to truth", fmtM(stereoAcc.rms));
   }
 
   // ---------- rendering ----------
@@ -305,6 +393,27 @@
     render();
   });
   buttons.run.addEventListener("click", () => { if (isRunning) stopRun(); else startRun(); });
+
+  // Color-by and ground-truth-overlay only change how already-computed
+  // points are displayed, so they redraw the clouds directly rather than
+  // re-running any sensor simulation.
+  pcColorModeEl.addEventListener("change", buildAndShowPointClouds);
+  pcGroundTruthEl.addEventListener("change", buildAndShowPointClouds);
+
+  function bindExport(btnId, cloudKey, format) {
+    el(btnId).addEventListener("click", () => {
+      if (!frame || !frame.pointClouds) return;
+      const points = frame.pointClouds[cloudKey].points;
+      const text = format === "ply" ? PC.toPLY(points) : PC.toXYZ(points);
+      PC.downloadText(text, cloudKey.replace("Cloud", "") + "-cloud." + format);
+    });
+  }
+  bindExport("pcTofExportPly", "tofCloud", "ply");
+  bindExport("pcTofExportXyz", "tofCloud", "xyz");
+  bindExport("pcSlExportPly", "slCloud", "ply");
+  bindExport("pcSlExportXyz", "slCloud", "xyz");
+  bindExport("pcStereoExportPly", "stereoCloud", "ply");
+  bindExport("pcStereoExportXyz", "stereoCloud", "xyz");
 
   // boot
   doCapture();

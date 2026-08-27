@@ -131,6 +131,7 @@
         const isValid = opts.rng() >= dropoutChance;
 
         let reconstructedDepth = NaN;
+        let confidence = 0;
         if (isValid) {
           const observedNdcX = pixelXToNdcX(cam, observedPixel[0]);
           const denom = observedNdcX * aspect * scale * pray.dir[2] - pray.dir[0];
@@ -145,7 +146,14 @@
           const confident = basicSane && predictedErrorM <= CONFIDENCE_LIMIT_M;
           reconstructedDepth = confident ? t : NaN;
           validGrid[idx] = confident ? 1 : 0;
-          if (confident) depthGrid[idx] = reconstructedDepth;
+          if (confident) {
+            depthGrid[idx] = reconstructedDepth;
+            // Same predicted-error check that gated validity, reused as a
+            // graded 0..1 confidence rather than a hard cutoff — a dot
+            // just inside the limit is trustworthy but not as trustworthy
+            // as one with near-zero predicted error.
+            confidence = Math.max(0, Math.min(1, 1 - predictedErrorM / CONFIDENCE_LIMIT_M));
+          }
         } else {
           validGrid[idx] = 0;
         }
@@ -153,6 +161,7 @@
         dots.push({
           dx: gx, dy: gy, expectedPixel: expectedPixel, observedPixel: observedPixel,
           valid: validGrid[idx] === 1, trueDepth: hit.t, reconstructedDepth: reconstructedDepth,
+          confidence: confidence,
         });
       }
     }

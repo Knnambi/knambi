@@ -143,14 +143,17 @@
         const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity, side: THREE.DoubleSide, depthWrite: false });
         const mesh = new THREE.Mesh(geom, mat);
         mesh.position.set(s.position[0], s.position[1], s.position[2]);
-        // Cone's local +Y is its axis; rotate it to point along the
-        // sensor's (azimuth, elevation) direction.
+        // ConeGeometry's apex sits at local +Y and its base at local -Y;
+        // after moving the apex to local origin above, the cone's BODY
+        // still extends along local -Y, not +Y. So local +Y has to land
+        // on the *negated* beam direction for the body (at -Y) to end
+        // up pointing along the actual beam direction.
         const dir = new THREE.Vector3(
           Math.sin(s.azimuth * Math.PI / 180) * Math.cos(s.elevation * Math.PI / 180),
           Math.sin(s.elevation * Math.PI / 180),
           Math.cos(s.azimuth * Math.PI / 180) * Math.cos(s.elevation * Math.PI / 180)
         );
-        mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+        mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().negate());
         conesGroup.add(mesh);
       }
     }

@@ -48,7 +48,8 @@
   let posState = window.PositionEstimate.createState();
   let truthTrail = [];
 
-  const truthView = window.BodyView.createViewport(el("truthCanvas"), { cameraDistance: 6, gridSize: 10 });
+  const truthView = window.BodyView.createViewport(el("truthCanvas"), { cameraDistance: 6, gridSize: 20 });
+  truthView.setFollowTarget("truth");
   const compareView = window.BodyView.createViewport(el("compareCanvas"), { cameraDistance: 2.4, gridSize: 4 });
 
   const accelChart = window.Chart.createChart(el("accelChart"), [

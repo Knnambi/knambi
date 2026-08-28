@@ -121,12 +121,21 @@
       position: [0, 0, 0], velocity: [0, 0, 0], orientation: Q.identity(),
     };
   }
+  // Velocity decays toward zero on its own (a ~1.2s time constant) when
+  // there's no accel input fighting it, rather than coasting forever —
+  // both a more forgiving feel for actually driving the thing, and a
+  // safety net against a single stray captured keystroke (e.g. arrow
+  // keys used to operate the profile dropdown) leaving the body with a
+  // permanent, never-decaying velocity and no way to stop it.
+  const MANUAL_DAMPING_PER_SECOND = 0.8;
+
   // input: { accelBody:[x,y,z] (m/s^2, in the body's own current axes,
   //          e.g. from WASD), angularVelocityBody:[x,y,z] (rad/s, from
   //          rotation keys) }
   function stepManual(state, input, dt) {
     const accelWorld = Q.rotateVector(state.orientation, input.accelBody);
-    const velocity = V.add(state.velocity, V.scale(accelWorld, dt));
+    const damping = Math.exp(-MANUAL_DAMPING_PER_SECOND * dt);
+    const velocity = V.add(V.scale(state.velocity, damping), V.scale(accelWorld, dt));
     const position = V.add(state.position, V.scale(velocity, dt));
     const orientation = Q.integrateBodyRate(state.orientation, input.angularVelocityBody, dt);
     return {

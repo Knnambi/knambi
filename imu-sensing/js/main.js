@@ -203,8 +203,22 @@
 
   resetBtn.addEventListener("click", reset);
 
-  window.addEventListener("keydown", (e) => { if (profileEl.value === "manual") heldKeys.add(e.code); });
+  // Keydown is bound on window, so without this check, using arrow
+  // keys/Enter to operate the profile <select> (or any other control)
+  // gets captured as movement input too — and since manual control has
+  // no input beyond direct key state, a single stray keystroke while
+  // picking "Manual control" from the dropdown was enough to push a
+  // permanent velocity into the body, which then drifted off with
+  // nothing to stop it. Caught by simulating real keyboard-driven
+  // dropdown selection (arrow keys, not a scripted value set) and
+  // checking position moved with no movement key ever deliberately held.
+  function isFormControlFocused() {
+    const t = document.activeElement;
+    return !!t && (t.tagName === "SELECT" || t.tagName === "INPUT" || t.tagName === "TEXTAREA");
+  }
+  window.addEventListener("keydown", (e) => { if (profileEl.value === "manual" && !isFormControlFocused()) heldKeys.add(e.code); });
   window.addEventListener("keyup", (e) => heldKeys.delete(e.code));
+  window.addEventListener("blur", () => heldKeys.clear());
 
   // boot
   applyNoiseConfig();

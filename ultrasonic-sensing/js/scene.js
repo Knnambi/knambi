@@ -187,8 +187,13 @@
       role: "panel", surface: cfg.panelSurface,
     };
 
-    const movingZ = (cfg.minRadius + cfg.maxRadius) / 2;
-    const movingSpan = Math.max(4, cfg.maxRadius);
+    // Deliberately placed nearer than the test panel (not out at the
+    // ring's own radius, as lidar-scanning's version of this function
+    // does) so it can actually compete for "nearest reflector" as it
+    // crosses the beam, instead of always losing to the panel or sitting
+    // beyond max range entirely.
+    const movingZ = cfg.panelDistance * 0.6;
+    const movingSpan = Math.max(2, cfg.panelDistance * 1.5);
     const movingHalfW = 0.6, movingHeight = 1.4;
     function movingObjectAt(t) {
       if (!cfg.movingEnabled) return null;

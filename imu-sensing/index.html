@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IMU Sensing: Accelerometer, Gyroscope, and Sensor Fusion</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <h1>IMU Sensing <span>— accelerometer, gyroscope, magnetometer, and fusion</span></h1>
+  <p class="subtitle">
+    One rigid body, moved by a preset motion profile or your own keyboard input, sensed by a
+    simulated accelerometer/gyroscope/magnetometer with real noise (white noise, bias, bias drift)
+    — then reconstructed three ways (gyro-only, complementary filter, Kalman filter) so drift and
+    correction are visible directly. A pedagogical model, not a physically exact simulator — see
+    <code>README.md</code>.
+  </p>
+</header>
+
+<section class="controls" id="controls">
+  <div class="control-group">
+    <div class="group-title">Motion</div>
+    <label>Profile
+      <select id="profile">
+        <option value="straightLine" selected>Straight-line acceleration</option>
+        <option value="constantTurn">Constant-velocity turn</option>
+        <option value="figureEight">Figure-eight path</option>
+        <option value="freeFall">Free-fall / drop</option>
+        <option value="shake">Shake (high-frequency vibration)</option>
+        <option value="manual">Manual control (keyboard)</option>
+      </select>
+    </label>
+    <p class="hint" id="manualHint">Manual: <b>W/S</b> forward/back, <b>A/D</b> strafe, <b>R/F</b> up/down, <b>arrow keys</b> pitch/yaw, <b>Q/E</b> roll.</p>
+    <div class="btn-row">
+      <button id="resetBtn" class="primary">Reset ↺</button>
+    </div>
+  </div>
+
+  <div class="control-group">
+    <div class="group-title">Accelerometer noise</div>
+    <label>White noise — <span id="accelWhiteVal">0.05</span> m/s² (1σ)
+      <input type="range" id="accelWhite" min="0" max="0.5" step="0.01" value="0.05">
+      <span class="hint">0.01 industrial-grade — 0.3 cheap MEMS</span>
+    </label>
+    <label>Bias — <span id="accelBiasVal">0.05</span> m/s²
+      <input type="range" id="accelBias" min="0" max="0.3" step="0.01" value="0.05">
+    </label>
+    <label>Bias drift rate — <span id="accelDriftVal">0.005</span> m/s²/√s
+      <input type="range" id="accelDrift" min="0" max="0.05" step="0.001" value="0.005">
+    </label>
+  </div>
+
+  <div class="control-group">
+    <div class="group-title">Gyroscope noise</div>
+    <label>White noise — <span id="gyroWhiteVal">0.01</span> rad/s (1σ)
+      <input type="range" id="gyroWhite" min="0" max="0.1" step="0.005" value="0.01">
+      <span class="hint">0.002 industrial-grade — 0.06 cheap MEMS</span>
+    </label>
+    <label>Bias — <span id="gyroBiasVal">0.02</span> rad/s
+      <input type="range" id="gyroBias" min="0" max="0.15" step="0.005" value="0.02">
+    </label>
+    <label>Bias drift rate — <span id="gyroDriftVal">0.002</span> rad/s/√s
+      <input type="range" id="gyroDrift" min="0" max="0.02" step="0.001" value="0.002">
+    </label>
+  </div>
+
+  <div class="control-group">
+    <div class="group-title">Magnetometer</div>
+    <label class="pc-checkbox"><input type="checkbox" id="magEnabled" checked> Enable magnetometer (yaw reference)</label>
+    <label class="pc-checkbox"><input type="checkbox" id="magInterference"> Magnetic interference (nearby motor/metal)</label>
+    <span class="hint">Without a magnetometer (or GPS), yaw is the one axis nothing can ever correct — accelerometer only senses gravity, which doesn't change if you spin in place.</span>
+  </div>
+
+  <div class="control-group actions">
+    <div class="group-title">Fusion</div>
+    <label>Orientation estimate shown as "Fused"
+      <select id="fusionMode">
+        <option value="gyroOnly">Gyro only (uncorrected)</option>
+        <option value="complementary" selected>Complementary filter</option>
+        <option value="kalman">Kalman filter</option>
+      </select>
+    </label>
+    <label>Accel correction strength — <span id="accelGainVal">0.03</span>
+      <input type="range" id="accelGain" min="0" max="0.15" step="0.005" value="0.03">
+    </label>
+    <label>Mag correction strength — <span id="magGainVal">0.015</span>
+      <input type="range" id="magGain" min="0" max="0.1" step="0.005" value="0.015">
+    </label>
+  </div>
+</section>
+
+<section class="pc-grid">
+  <div class="pc-cell">
+    <div class="pc-cell-title">Ground truth <span class="tag">actual motion, before any sensor</span></div>
+    <canvas id="truthCanvas"></canvas>
+  </div>
+  <div class="pc-cell">
+    <div class="pc-cell-title">Orientation comparison <span class="tag">ground truth · gyro-only (drifts) · fused</span></div>
+    <canvas id="compareCanvas"></canvas>
+    <div class="legend-row-inline">
+      <span><span class="swatch" style="background:#8b97a7"></span>Ground truth</span>
+      <span><span class="swatch" style="background:#e2685a"></span>Gyro-only</span>
+      <span><span class="swatch" style="background:#55c17b"></span>Fused</span>
+    </div>
+  </div>
+</section>
+
+<section class="pc-grid charts-grid">
+  <div class="pc-cell">
+    <div class="pc-cell-title">Accelerometer <span class="tag">specific force, body axes, m/s²</span></div>
+    <canvas id="accelChart" class="chart-canvas"></canvas>
+  </div>
+  <div class="pc-cell">
+    <div class="pc-cell-title">Gyroscope <span class="tag">angular velocity, body axes, rad/s</span></div>
+    <canvas id="gyroChart" class="chart-canvas"></canvas>
+  </div>
+  <div class="pc-cell">
+    <div class="pc-cell-title">Orientation error vs. ground truth <span class="tag">degrees</span></div>
+    <canvas id="orientErrChart" class="chart-canvas"></canvas>
+  </div>
+  <div class="pc-cell">
+    <div class="pc-cell-title">Magnetometer heading <span class="tag">raw sensed vs. true, degrees</span></div>
+    <canvas id="headingChart" class="chart-canvas"></canvas>
+  </div>
+</section>
+
+<section class="compare">
+  <div class="col-title">Position estimate <span class="tag">double-integrated from the accelerometer alone — no GPS, no correction</span></div>
+  <dl class="col-stats" id="positionStats"></dl>
+  <canvas id="positionChart" class="chart-canvas" style="height:140px;margin-top:0.6rem;"></canvas>
+</section>
+
+<footer>
+  <p>Everything here runs client-side, from static files — nothing is uploaded anywhere. See <code>README.md</code> for what's simulated vs. simplified.</p>
+</footer>
+
+<script src="js/vendor/three.min.js"></script>
+<script src="js/vendor/OrbitControls.js"></script>
+<script src="js/vec3.js"></script>
+<script src="js/quat.js"></script>
+<script src="js/rng.js"></script>
+<script src="js/noise.js"></script>
+<script src="js/motion.js"></script>
+<script src="js/imu.js"></script>
+<script src="js/fusion.js"></script>
+<script src="js/position.js"></script>
+<script src="js/chart.js"></script>
+<script src="js/bodyview.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

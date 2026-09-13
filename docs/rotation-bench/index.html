@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rotation Bench</title>
 <meta name="description" content="An interactive 3D robot arm you can pose by hand or train with an evolution strategy to reach targets on its own.">
+<meta property="og:title" content="Rotation Bench">
+<meta property="og:description" content="An interactive 3D robot arm you can pose by hand or train with an evolution strategy to reach targets on its own.">
+<meta property="og:image" content="https://knnambi.github.io/knambi/rotation-bench/preview.png">
+<meta property="og:url" content="https://knnambi.github.io/knambi/rotation-bench/">
+<meta property="og:type" content="website">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AD%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
@@ -978,6 +983,7 @@
   var NPARAMS = B2_OFF+B2_LEN;
   var POP_SIZE=40, ELITE_N=8, EVAL_TARGETS=3, STEPS_PER_EP=26, MAX_STEP_DEG=9;
   var sigma = 0.6;
+  var CONVERGE_DIST = 0.05, MAX_GENERATIONS = 300;
 
   var training = {
     active:false, inited:false, fast:false,
@@ -1116,6 +1122,11 @@
     genCountEl.textContent = training.generation;
     bestDistEl.textContent = (-training.bestFitness).toFixed(3);
     drawChart();
+
+    if(training.active && (-training.bestFitness < CONVERGE_DIST || training.generation >= MAX_GENERATIONS)){
+      training.active = false;
+      trainToggle.textContent = (-training.bestFitness < CONVERGE_DIST) ? "Converged ✓" : "Start training";
+    }
   }
   function consumeReplayStep(){
     var next = training.replayQueue.shift();

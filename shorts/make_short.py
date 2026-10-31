@@ -150,7 +150,8 @@ class Scene:
         paste_center(img, self._t, W / 2, H * 0.42, sc, clamp(lt / 0.2), angle=2 * math.sin(lt * 2.5))
         if self._s:
             p = ease_out_cubic((lt - 0.5) / 0.5)
-            paste_center(img, self._s, W / 2, lerp(H * 0.75, H * 0.62, p), 1, p)
+            ty = H * 0.42 + self._t.height / 2 + self._s.height / 2 + 40
+            paste_center(img, self._s, W / 2, lerp(ty + 120, ty, p), 1, p)
 
     # Numbered fact: spinning badge + word-by-word caption
     def r_fact(self, img, lt):
@@ -205,7 +206,8 @@ class Scene:
         if not text:
             return
         if not hasattr(self, "_cap"):
-            f = load_font(int(self.spec.get("size", 92)), self.font_path)
+            default = 92 if len(text.split()) <= 7 else 78
+            f = load_font(int(self.spec.get("size", default)), self.font_path)
             tmp = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
             lines = wrap(text, f, 860, tmp)
             asc, desc = f.getmetrics()

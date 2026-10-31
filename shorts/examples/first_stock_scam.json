@@ -1,0 +1,84 @@
+{
+  "handle": "@yourchannel",
+  "fps": 30,
+  "theme": {
+    "background": [
+      "#1b1208",
+      "#7a4a12"
+    ],
+    "accent": "#f5c542",
+    "text": "#fff6e0"
+  },
+  "audio": {
+    "music": true,
+    "bpm": 100
+  },
+  "scenes": [
+    {
+      "type": "title",
+      "duration": 3.0,
+      "text": "The First Stock Market Scam",
+      "sub": "France, 1830s"
+    },
+    {
+      "type": "caption",
+      "duration": 4.2,
+      "text": "Bond prices took days to travel from Paris to Bordeaux"
+    },
+    {
+      "type": "caption",
+      "duration": 4.2,
+      "text": "But the government had a secret weapon: semaphore towers"
+    },
+    {
+      "type": "fact",
+      "duration": 4.0,
+      "number": 1,
+      "label": "The towers",
+      "text": "Every 12 km, with moving metal arms. Private messages banned"
+    },
+    {
+      "type": "fact",
+      "duration": 4.4,
+      "number": 2,
+      "label": "The bribe",
+      "text": "The Blanc twins paid off a tower operator in Tours"
+    },
+    {
+      "type": "fact",
+      "duration": 4.6,
+      "number": 3,
+      "label": "The code",
+      "text": "He sent a secret signal, then hit backspace to hide it"
+    },
+    {
+      "type": "fact",
+      "duration": 4.4,
+      "number": 4,
+      "label": "The spy",
+      "text": "A lookout in Bordeaux read the signal before it vanished"
+    },
+    {
+      "type": "caption",
+      "duration": 4.2,
+      "text": "They knew market moves days before anyone else"
+    },
+    {
+      "type": "caption",
+      "duration": 4.4,
+      "text": "Two years later, the operator confessed on his deathbed"
+    },
+    {
+      "type": "title",
+      "duration": 3.2,
+      "text": "They Walked Free",
+      "sub": "No law covered private telegraph use"
+    },
+    {
+      "type": "outro",
+      "duration": 2.8,
+      "text": "Follow for more wild history!",
+      "button": "SUBSCRIBE"
+    }
+  ]
+}

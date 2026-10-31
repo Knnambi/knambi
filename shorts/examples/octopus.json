@@ -1,0 +1,17 @@
+{
+  "handle": "@yourchannel",
+  "fps": 30,
+  "theme": {
+    "background": ["#0b1d51", "#8a2be2"],
+    "accent": "#ffd60a",
+    "text": "#ffffff"
+  },
+  "audio": { "music": true, "bpm": 118 },
+  "scenes": [
+    { "type": "title", "duration": 2.6, "text": "3 Wild Octopus Facts", "sub": "#3 sounds made up" },
+    { "type": "fact", "duration": 3.4, "number": 1, "label": "Hearts", "text": "An octopus has three hearts pumping blue blood" },
+    { "type": "fact", "duration": 3.4, "number": 2, "label": "Brains", "text": "Two thirds of its neurons live in its arms" },
+    { "type": "fact", "duration": 3.6, "number": 3, "label": "Taste", "text": "It can taste things just by touching them" },
+    { "type": "outro", "duration": 2.8, "text": "Follow for more facts!", "button": "SUBSCRIBE" }
+  ]
+}
